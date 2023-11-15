@@ -3,7 +3,7 @@ pragma solidity ^0.8.9;
 
 contract Elections {
     using ByteHasher for bytes;
-    address public owner_address;
+    address public control_address;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  ERRORS                                ///
@@ -24,9 +24,9 @@ contract Elections {
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
     mapping(uint256 => bool) internal nullifierHashes;
 
-    uint256 eid = 0;
     uint256[] votes;
     bool running = false;
+    bool ended = false;
 
     /// @param _worldId The WorldID instance that will verify the proofs
     /// @param _appId The World ID app ID
@@ -36,7 +36,7 @@ contract Elections {
         string memory _appId,
         string memory _actionId
     ) {
-        owner_address = msg.sender;
+        control_address = msg.sender;
         worldId = _worldId;
         externalNullifier = abi
             .encodePacked(abi.encodePacked(_appId).hashToField(), _actionId)
@@ -47,8 +47,7 @@ contract Elections {
      * @dev TODO: add description
      */
     function startVoting() public {
-        if (msg.sender == owner_address && !running) {
-            box[eid] = VotingBox(new address[](0), new uint256[](0));
+        if (msg.sender == control_address && !running && !ended) {
             running = true;
         }
         else {
@@ -60,17 +59,16 @@ contract Elections {
      * @dev TODO: add description
      */
     function stopVoting() public {
-        if (msg.sender == owner_address && running) {
+        if (msg.sender == control_address && running && !ended) {
             running = false;
-
-            eid++;
+            ended = true;
         }
         else {
             revert();
         }
     }
-
-        /// @param signal An arbitrary input from the user, usually the user's wallet address (check README for further details)
+    /// @param vote The vote to be sent to the contract (check README for further details)
+    /// @param signal An arbitrary input from the user, usually the user's wallet address (check README for further details)
     /// @param root The root of the Merkle tree (returned by the JS widget).
     /// @param nullifierHash The nullifier hash for this proof, preventing double signaling (returned by the JS widget).
     /// @param proof The zero-knowledge proof that demonstrates the claimer is registered with World ID (returned by the JS widget).
@@ -105,7 +103,7 @@ contract Elections {
      * @dev TODO: add description
      */
     function getResults(uint256 id) public view returns (uint256[] memory) {
-        return box[id].votes;
+        return votes;
     }
 
 }
